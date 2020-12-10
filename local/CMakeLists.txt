@@ -36,3 +36,4 @@ ADD_CUSTOM_TARGET(
                      -P ${CMAKE_BINARY_DIR}/bversion.cmake
 )
 ADD_DEPENDENCIES(listener build_version)
+target_link_libraries(listener pthread)

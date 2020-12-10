@@ -6,12 +6,12 @@ import re
 from git import Repo
 
 def do_commit_check(fn, verbose=False): 
+    cmd = "clang-format-6.0 -style=file -output-replacements-xml {}".format(fn)
     if verbose:
+        print(cmd)
         print("[COMMIT_CHECK] processing file %s: "%(fn), end=' ')
-
-    cmd = "clang-format-6.0 -style=file -output-replacements-xml %s"%fn
     res, _err = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE).communicate()
-    if len(re.findall("\\breplacement\\b", res)) > 0:
+    if len(re.findall(b"\\breplacement\\b", res)) > 0:
         if verbose:
             print("Failed", end=' ')
             print(" Fixing", end=' ')
@@ -60,7 +60,7 @@ if __name__=="__main__":
         if toks[0].strip() in git_tokens:
             filename = toks[1].strip().encode('ascii', 'ignore')
             if any ( [ filename.endswith(bytes(x, 'utf-8')) for x in ['.c','.h', '.cpp', '.hpp' ] ] ):
-                fnlist.append(filename)
+                fnlist.append(filename.decode())
         continue
     print("[COMMIT_CHECK] %d Files modifed"%len(fnlist))
     analyze_all(fnlist, True if len(sys.argv) >1 else False )

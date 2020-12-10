@@ -97,15 +97,19 @@ if [ "$BUILD" = "1" ]; then
     
     python3 ".commit_check.py"
     echo "Build"
-    [ ! -d build ] && mkdir build
-    cd build
+    
     
     BUILDTYPE=Debug
     
     if [ "$RELEASE" = "1" ]; then
         BUILDTYPE=Release
     fi
+    EXTRA_ARGS=""
+    [ ! -d build ] && EXTRA_ARGS="-DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN}"
+    [ ! -d build ] && mkdir build
+    cd build
 
-    cmake -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN} -DCMAKE_BUILD_TYPE=${BUILDTYPE} ${CONTROL_ARGS} .. 
+    #cmake -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN} -DCMAKE_BUILD_TYPE=${BUILDTYPE} ${CONTROL_ARGS} .. 
+    cmake ${EXTRA_ARGS} -DCMAKE_BUILD_TYPE=${BUILDTYPE} ${CONTROL_ARGS} .. 
     cmake --build .  -- -j 4
 fi
