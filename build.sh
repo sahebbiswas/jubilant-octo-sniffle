@@ -1,7 +1,9 @@
 #!/bin/bash
+# set -x
 
 # Simple main build file
 # Just run ./build.sh
+
 
 function cpp_check {
     COMMAND='cppcheck'
@@ -30,21 +32,80 @@ function cpp_check {
 
 }
 
-# Create build base dir
-[ ! -d build ] && mkdir build
 
-# Format all source files
-python3 .format_all.py
+BUILD=1
+CLEAN=0
+HELP=0
+ANALYZE=1
+RELEASE=0
+FORMAT=0
+TOOLCHAIN=../toolchain.unix.cmake
 
-# static analyze
-cpp_check --enable=warning,missingInclude,unusedFunction \
-    --suppress=missingIncludeSystem --inline-suppr \
-    --error-exitcode=1 -USIGQUIT --quiet --inconclusive -v \
-    -i cuse.c -i canbus/ -i build/ -i control/LabJack/liblabjackusb \
-    -i u3.c -I modbus/private -I client/include -I modbus/include -I relay/include \
-    -I control/LabJack -I control/LabJack/library/ . 
+CONTROL_ARGS=""
 
-# build
-cd build
-cmake -DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 -DCMAKE_BUILD_TYPE=${BUILDTYPE} ..
-cmake --build .
+while getopts "hcrfwa" opt; do
+    case $opt in 
+    a) ANALYZE=1
+    	BUILD=0;;
+    c) CLEAN=1
+     ANALYZE=0
+       BUILD=0 ;;
+    h) HELP=1;;
+    r) CLEAN=1
+    	ANALYZE=0
+       FORMAT=1 
+       RELEASE=1;;
+    f) FORMAT=1
+    	ANALYZE=0;;
+    w) CONTROL_ARGS="$CONTROL_ARGS -DIgnoreWarnings=ON";;
+    ?) HELP=1;;
+    esac
+done
+
+if [ "$HELP" = "1" ]; then
+    echo usage:
+    echo --------------------------------------------
+    echo $0 [hcrfa]
+    echo "$0              Build"
+    echo "$0 -c           Clean the build folders"
+    echo "$0 -a           Analyze files"
+    echo "$0 -f           Format all source files and build code"
+    echo "$0 -h           show this HELP"
+    echo "$0 -r           Clean, format and rebuild, builds non-debug"
+    echo "$0 -w           Ignore Build warnings"
+    echo --------------------------------------------
+    exit
+fi
+
+if [ "$CLEAN" = "1" ]; then
+    echo "Clean all build folders"
+    rm -rf build
+fi
+if [ "$FORMAT" = "1" ]; then
+    echo Format all code
+    python3 ".format_all.py"
+fi
+
+if [ "$ANALYZE" = "1" ]; then
+	cpp_check --enable=warning,missingInclude,unusedFunction \
+        --suppress=missingIncludeSystem \
+        --inline-suppr --error-exitcode=1 \
+        -USIGQUIT --quiet --inconclusive -v .
+fi
+
+if [ "$BUILD" = "1" ]; then
+    
+    python3 ".commit_check.py"
+    echo "Build"
+    [ ! -d build ] && mkdir build
+    cd build
+    
+    BUILDTYPE=Debug
+    
+    if [ "$RELEASE" = "1" ]; then
+        BUILDTYPE=Release
+    fi
+
+    cmake -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN} -DCMAKE_BUILD_TYPE=${BUILDTYPE} ${CONTROL_ARGS} .. 
+    cmake --build .  -- -j 4
+fi
